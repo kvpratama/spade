@@ -48,7 +48,7 @@ for epoch in iter_counter.training_epochs():
         # Visualizations
         if iter_counter.needs_printing():
             losses = trainer.get_latest_losses()
-            visualizer.print_current_errors(epoch, iter_counter.epoch_iter, len(dataloader),
+            visualizer.print_current_errors(epoch, iter_counter.epoch_iter//opt.batchSize, len(dataloader),
                                             losses, iter_counter.time_per_iter)
             visualizer.plot_current_errors(losses, iter_counter.total_steps_so_far)
 
