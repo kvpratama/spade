@@ -23,6 +23,9 @@ class Pix2PixModel(torch.nn.Module):
             else torch.ByteTensor
 
         self.netG, self.netD, self.netE = self.initialize_networks(opt)
+        self.netG.to('cuda:1')
+        self.netD.to('cuda:0')
+        # pdb.set_trace()
 
         # set loss functions
         if opt.isTrain:
@@ -135,16 +138,14 @@ class Pix2PixModel(torch.nn.Module):
         G_losses = {}
 
         fake_image, KLD_loss = self.generate_fake(
-            input_semantics, real_image, compute_kld_loss=self.opt.use_vae)
+            input_semantics.to('cuda:1'), real_image.to('cuda:1'), compute_kld_loss=self.opt.use_vae)
 
         if self.opt.use_vae:
             G_losses['KLD'] = KLD_loss
 
-        pred_fake, pred_real = self.discriminate(
-            input_semantics, fake_image, real_image)
+        pred_fake, pred_real = self.discriminate(input_semantics.to('cuda:0'), fake_image.to('cuda:0'), real_image.to('cuda:0'))
 
-        G_losses['GAN'] = self.criterionGAN(pred_fake, True,
-                                            for_discriminator=False)
+        G_losses['GAN'] = self.criterionGAN(pred_fake, True, for_discriminator=False)
 
         if not self.opt.no_ganFeat_loss:
             num_D = len(pred_fake)
@@ -159,19 +160,19 @@ class Pix2PixModel(torch.nn.Module):
             G_losses['GAN_Feat'] = GAN_Feat_loss
 
         if not self.opt.no_vgg_loss:
-            G_losses['VGG'] = self.criterionVGG(fake_image.repeat(1, 3, 1, 1), real_image.repeat(1, 3, 1, 1)) * self.opt.lambda_vgg
-
-        return G_losses, fake_image
+            G_losses['VGG'] = self.criterionVGG(fake_image.to('cuda:0').repeat(1, 3, 1, 1), real_image.repeat(1, 3, 1, 1)) * self.opt.lambda_vgg
+        # pdb.set_trace()
+        return G_losses, fake_image.to('cuda:0')
 
     def compute_discriminator_loss(self, input_semantics, real_image):
         D_losses = {}
         with torch.no_grad():
-            fake_image, _ = self.generate_fake(input_semantics, real_image)
+            fake_image, _ = self.generate_fake(input_semantics.to('cuda:1'), real_image.to('cuda:1'))
             fake_image = fake_image.detach()
             fake_image.requires_grad_()
 
         pred_fake, pred_real = self.discriminate(
-            input_semantics, fake_image, real_image)
+            input_semantics, fake_image.to('cuda:0'), real_image)
 
         D_losses['D_Fake'] = self.criterionGAN(pred_fake, False,
                                                for_discriminator=True)
@@ -193,6 +194,7 @@ class Pix2PixModel(torch.nn.Module):
             if compute_kld_loss:
                 KLD_loss = self.KLDLoss(mu, logvar) * self.opt.lambda_kld
 
+        # pdb.set_trace()
         fake_image = self.netG(input_semantics, z=z)
 
         assert (not compute_kld_loss) or self.opt.use_vae, \
