@@ -106,8 +106,12 @@ class SPADEGenerator(BaseNetwork):
         x = self.up(x)
         x = self.up_2(x, seg)
         x = self.up(x)
-        # x = self.up_3(x, seg)
-        x = self.up_3.to('cuda:1')(x.to('cuda:1'), seg.to('cuda:1')).to('cuda:0')
+        if self.opt.model_parallel:
+            cuda0 = 'cuda:{}'.format(self.opt.gpu_ids[0])
+            cuda1 = 'cuda:{}'.format(self.opt.gpu_ids[-1])
+            x = self.up_3.to(cuda1)(x.to(cuda1), seg.to(cuda1)).to(cuda0)
+        else:
+            x = self.up_3(x, seg)
 
         if self.opt.num_upsampling_layers == 'most':
             x = self.up(x)

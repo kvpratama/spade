@@ -18,12 +18,12 @@ class Pix2PixTrainer():
         self.opt = opt
         self.pix2pix_model = Pix2PixModel(opt)
         if len(opt.gpu_ids) > 0:
-            # self.pix2pix_model = DataParallelWithCallback(self.pix2pix_model,
-            #                                               device_ids=opt.gpu_ids)
-            # self.pix2pix_model_on_one_gpu = self.pix2pix_model.module
-            self.pix2pix_model_on_one_gpu = self.pix2pix_model
+            if opt.model_parallel:
+                self.pix2pix_model_on_one_gpu = self.pix2pix_model
+            else:
+                self.pix2pix_model = DataParallelWithCallback(self.pix2pix_model, device_ids=opt.gpu_ids)
+                self.pix2pix_model_on_one_gpu = self.pix2pix_model.module
         else:
-
             self.pix2pix_model_on_one_gpu = self.pix2pix_model
 
         self.generated = None
